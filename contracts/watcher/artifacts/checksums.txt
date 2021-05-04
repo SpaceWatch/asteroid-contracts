@@ -1,0 +1,2 @@
+9544d80c2d2bdb93ddf2b5e666d4c076d53cfe75e2464b55033b40351c3f9291  asteroid_watcher.wasm
+30acc67fd618e4fafb966c3acf8f2c2743458ccfb89a53c699a0c8ebd6fdf9af  my_first_contract.wasm
