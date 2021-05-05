@@ -1,5 +1,5 @@
-use crate::state::Alert;
-use cosmwasm_std::CanonicalAddr;
+use crate::models::{Alert, AlertField, OrderBy};
+use cosmwasm_std::{CanonicalAddr, HumanAddr};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -9,16 +9,27 @@ pub struct InitMsg {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum HandleMsg {
-    CreateAlert { alert: Alert },
-    SubscribeAlert { alert_key: String },
-    UnsubscribeAlert { alert_key: String },
-    // Reset { count: i32 },
+    CreateAlert {
+        blockchain: String,
+        protocol: String,
+        method: String,
+        name: String,
+        description: String,
+        fields: Vec<AlertField>,
+    },
+    SubscribeAlert {
+        alert_key: String,
+    },
+    UnsubscribeAlert {
+        alert_key: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    GetAllAlerts {
+    GetAlerts {
+        start_after: Option<HumanAddr>,
         limit: Option<u32>,
         order_by: Option<OrderBy>,
     },
@@ -26,13 +37,6 @@ pub enum QueryMsg {
 
 // We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetAllAlertsResponse {
-    alerts: Vec<Alert>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum OrderBy {
-    Asc,
-    Desc,
+pub struct GetAlertsResponse {
+    pub alerts: Vec<Alert>,
 }

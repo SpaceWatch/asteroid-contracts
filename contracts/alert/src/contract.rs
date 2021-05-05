@@ -1,21 +1,22 @@
 use cosmwasm_std::{
-    to_binary, Api, Binary, Env, Extern, HandleResponse, InitResponse, Querier, StdError,
-    StdResult, Storage,
+    to_binary, Api, Binary, Env, Extern, HandleResponse, HumanAddr, InitResponse, Querier,
+    StdError, StdResult, Storage,
 };
 
-use crate::msg::{HandleMsg, InitMsg, QueryMsg};
-use crate::state::{config, config_read, Alert, State};
+use crate::models::{Alert, AlertField, OrderBy};
+use crate::msg::{GetAlertsResponse, HandleMsg, InitMsg, QueryMsg};
+use crate::state::{read_alerts, read_config, store_alert, store_config, Config};
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
-    msg: InitMsg,
+    _msg: InitMsg,
 ) -> StdResult<InitResponse> {
-    let state = State {
+    let config = Config {
         owner: deps.api.canonical_address(&env.message.sender)?,
     };
 
-    config(&mut deps.storage).save(&state)?;
+    store_config(&mut deps.storage, &config)?;
 
     Ok(InitResponse::default())
 }
@@ -26,58 +27,104 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
     msg: HandleMsg,
 ) -> StdResult<HandleResponse> {
     match msg {
-        HandleMsg::CreateAlert { alert } => Ok(HandleResponse::default()),
+        HandleMsg::CreateAlert {
+            blockchain,
+            protocol,
+            method,
+            name,
+            description,
+            fields,
+        } => try_create_alert(
+            deps,
+            env,
+            blockchain,
+            protocol,
+            method,
+            name,
+            description,
+            fields,
+        ),
         HandleMsg::SubscribeAlert { alert_key } => Ok(HandleResponse::default()),
         HandleMsg::UnsubscribeAlert { alert_key } => Ok(HandleResponse::default()),
     }
 }
 
-pub fn try_increment<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
-    _env: Env,
-) -> StdResult<HandleResponse> {
-    config(&mut deps.storage).update(|mut state| Ok(state))?;
-
-    Ok(HandleResponse::default())
-}
-
-pub fn try_reset<S: Storage, A: Api, Q: Querier>(
+pub fn try_create_alert<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
-    count: i32,
+    blockchain: String,
+    protocol: String,
+    method: String,
+    name: String,
+    description: String,
+    fields: Vec<AlertField>,
 ) -> StdResult<HandleResponse> {
-    let api = &deps.api;
-    config(&mut deps.storage).update(|mut state| {
-        if api.canonical_address(&env.message.sender)? != state.owner {
-            return Err(StdError::unauthorized());
-        }
-        // state.count = count;
-        Ok(state)
-    })?;
+    let config: Config = read_config(&deps.storage)?;
+
+    // Only owner can create alert for now
+    // TODO: Have some form of whitelisted addresses
+    if deps.api.canonical_address(&env.message.sender)? != config.owner {
+        return Err(StdError::unauthorized());
+    }
+
+    let key: String = format!("{}.{}.{}", blockchain, protocol, method);
+    let alert: Alert = Alert {
+        key,
+        blockchain,
+        protocol,
+        method,
+        name,
+        description,
+        fields,
+    };
+    store_alert(&mut deps.storage, &alert)?;
+
     Ok(HandleResponse::default())
 }
+
+// pub fn try_reset<S: Storage, A: Api, Q: Querier>(
+//     deps: &mut Extern<S, A, Q>,
+//     env: Env,
+//     count: i32,
+// ) -> StdResult<HandleResponse> {
+//     let api = &deps.api;
+
+//     // if api.canonical_address(&env.message.sender)? != config.owner {
+//     //   store_config(&mut deps.storage)
+//     // }
+
+//     Ok(HandleResponse::default())
+// }
 
 pub fn query<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
     msg: QueryMsg,
 ) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetAllAlerts { limit, order_by } => to_binary(&vec![Alert {
-            key: String::from("key"),
-            blockchain: String::from("blockchain"),
-            protocol: String::from("protocol"),
-            method: String::from("method"),
-            name: String::from("name"),
-            description: String::from("string"),
-            fields: vec![],
-        }]),
+        QueryMsg::GetAlerts {
+            start_after,
+            limit,
+            order_by,
+        } => to_binary(&handle_query_alerts(deps, start_after, limit, order_by)),
     }
 }
 
-// fn query_count<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdResult<CountResponse> {
-//     let state = config_read(&deps.storage).load()?;
-//     Ok(CountResponse { count: state.count })
-// }
+fn handle_query_alerts<S: Storage, A: Api, Q: Querier>(
+    deps: &Extern<S, A, Q>,
+    start_after: Option<HumanAddr>,
+    limit: Option<u32>,
+    order_by: Option<OrderBy>,
+) -> StdResult<GetAlertsResponse> {
+    let start_after = if let Some(start_after) = start_after {
+        Some(deps.api.canonical_address(&start_after)?)
+    } else {
+        None
+    };
+
+    let alerts: Vec<Alert> = read_alerts(&deps, start_after, limit, order_by)?;
+
+    Ok(GetAlertsResponse { alerts })
+}
 
 #[cfg(test)]
 mod tests {
