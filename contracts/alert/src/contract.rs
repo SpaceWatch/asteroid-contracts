@@ -4,7 +4,7 @@ use cosmwasm_std::{
 };
 
 use crate::msg::{HandleMsg, InitMsg, QueryMsg};
-use crate::state::{config, config_read, State, Alert};
+use crate::state::{config, config_read, Alert, State};
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
@@ -36,9 +36,7 @@ pub fn try_increment<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     _env: Env,
 ) -> StdResult<HandleResponse> {
-    config(&mut deps.storage).update(|mut state| {
-        Ok(state)
-    })?;
+    config(&mut deps.storage).update(|mut state| Ok(state))?;
 
     Ok(HandleResponse::default())
 }
@@ -64,8 +62,7 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
     msg: QueryMsg,
 ) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetAllAlerts {limit, order_by} => to_binary(
-          &vec![Alert {
+        QueryMsg::GetAllAlerts { limit, order_by } => to_binary(&vec![Alert {
             key: String::from("key"),
             blockchain: String::from("blockchain"),
             protocol: String::from("protocol"),
@@ -73,7 +70,7 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
             name: String::from("name"),
             description: String::from("string"),
             fields: vec![],
-          }]),
+        }]),
     }
 }
 
