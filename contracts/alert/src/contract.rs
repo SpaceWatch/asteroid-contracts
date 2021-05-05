@@ -4,7 +4,7 @@ use cosmwasm_std::{
 };
 
 use crate::msg::{HandleMsg, InitMsg, QueryMsg};
-use crate::state::{config, config_read, State, Watcher};
+use crate::state::{config, config_read, State, Alert};
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
@@ -26,9 +26,9 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
     msg: HandleMsg,
 ) -> StdResult<HandleResponse> {
     match msg {
-        HandleMsg::CreateWatcher { watcher } => Ok(HandleResponse::default()),
-        HandleMsg::SubscribeWatcher { watcher_key } => Ok(HandleResponse::default()),
-        HandleMsg::UnsubscribeWatcher { watcher_key } => Ok(HandleResponse::default()),
+        HandleMsg::CreateAlert { alert } => Ok(HandleResponse::default()),
+        HandleMsg::SubscribeAlert { alert_key } => Ok(HandleResponse::default()),
+        HandleMsg::UnsubscribeAlert { alert_key } => Ok(HandleResponse::default()),
     }
 }
 
@@ -64,8 +64,8 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
     msg: QueryMsg,
 ) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetAllWatchers {limit, order_by} => to_binary(
-          &vec![Watcher {
+        QueryMsg::GetAllAlerts {limit, order_by} => to_binary(
+          &vec![Alert {
             key: String::from("key"),
             blockchain: String::from("blockchain"),
             protocol: String::from("protocol"),

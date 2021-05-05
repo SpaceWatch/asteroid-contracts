@@ -1,5 +1,5 @@
 [package]
-name = "asteroid-watcher"
+name = "asteroid-alert"
 version = "0.1.0"
 authors = ["zameschua <zames.chua@gmail.com>"]
 edition = "2018"

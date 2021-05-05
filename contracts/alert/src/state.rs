@@ -20,55 +20,55 @@ pub fn config_read<S: Storage>(storage: &S) -> ReadonlySingleton<S, State> {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Watcher {
+pub struct Alert {
   pub key: String,
   pub blockchain: String,
   pub protocol: String,
   pub method: String,
   pub name: String,
   pub description: String,
-  pub fields: Vec<WatcherField>
+  pub fields: Vec<AlertField>
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct WatcherField {
+pub struct AlertField {
   pub key: String,
   pub name: String,
   pub description: String,
   pub validation_regex: String,
 }
 
-static PREFIX_WATCHER: &[u8] = b"watcher";
+static PREFIX_ALERT: &[u8] = b"alert";
 
-pub fn store_watcher<S: Storage>(
+pub fn store_alert<S: Storage>(
   storage: &mut S,
-  watcher: &Watcher,
+  alert: &Alert,
 ) -> StdResult<()> {
-  Bucket::new(PREFIX_WATCHER, storage).save(watcher.key.as_bytes(), watcher)
+  Bucket::new(PREFIX_ALERT, storage).save(alert.key.as_bytes(), alert)
 }
 
 // settings for pagination
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
-pub fn read_watchers<S: Storage>(
+pub fn read_alerts<S: Storage>(
   storage: &S,
   limit: Option<u32>,
   start_after: Option<CanonicalAddr>, // Kinda like a cursor for pagination
   order: Option<Order>,
-) -> StdResult<Vec<Watcher>> {
+) -> StdResult<Vec<Alert>> {
   let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
   let (start, end, order) = match order {
     Some(Order::Ascending) => (calc_range_start(start_after), None, Order::Ascending),
     _ => (None, calc_range_end(start_after), Order::Descending),
   };
 
-  let watchers_bucket: ReadonlyBucket<S, Watcher> = ReadonlyBucket::new(PREFIX_WATCHER, storage);
-  watchers_bucket
+  let alerts_bucket: ReadonlyBucket<S, Alert> = ReadonlyBucket::new(PREFIX_ALERT, storage);
+  alerts_bucket
       .range(start.as_deref(), end.as_deref(), order.into())
       .take(limit)
       .map(|item| {
           let (_k, v) = item?;
-          Ok(Watcher {
+          Ok(Alert {
               key: v.key,
               blockchain: v.blockchain,
               protocol: v.protocol,
