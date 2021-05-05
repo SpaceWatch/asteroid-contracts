@@ -1,10 +1,11 @@
 use cosmwasm_std::Order;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Alert {
-    pub key: String,
+    pub alert_key: String,
     pub blockchain: String,
     pub protocol: String,
     pub method: String,
@@ -15,10 +16,22 @@ pub struct Alert {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AlertField {
-    pub key: String,
+    pub field_key: String,
     pub name: String,
     pub description: String,
     pub validation_regex: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Subscription {
+    pub alert_key: String,
+    pub field_values_by_key: HashMap<String, SubscriptionFieldValue>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct SubscriptionFieldValue {
+    pub field_key: String,
+    pub value: String,
 }
 
 /**

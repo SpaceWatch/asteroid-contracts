@@ -5,7 +5,9 @@ use cosmwasm_std::{
 
 use crate::models::{Alert, AlertField, OrderBy};
 use crate::msg::{GetAlertsResponse, HandleMsg, InitMsg, QueryMsg};
-use crate::state::{read_alerts, read_config, store_alert, store_config, Config};
+use crate::state::{
+    read_alerts, read_config, read_subscriptions_for_address, store_alert, store_config, Config,
+};
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
@@ -67,9 +69,10 @@ pub fn try_create_alert<S: Storage, A: Api, Q: Querier>(
         return Err(StdError::unauthorized());
     }
 
-    let key: String = format!("{}.{}.{}", blockchain, protocol, method);
+    // Concatenate `Blockchain.Protocol.method` to use as alert_key
+    let alert_key: String = format!("{}.{}.{}", blockchain, protocol, method);
     let alert: Alert = Alert {
-        key,
+        alert_key,
         blockchain,
         protocol,
         method,
@@ -106,6 +109,18 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
             limit,
             order_by,
         } => to_binary(&handle_query_alerts(deps, start_after, limit, order_by)),
+        QueryMsg::GetSubscriptions {
+            subscriber_addr,
+            start_after,
+            limit,
+            order_by,
+        } => to_binary(&handle_query_subscriptions_for_address(
+            deps,
+            subscriber_addr,
+            start_after,
+            limit,
+            order_by,
+        )),
     }
 }
 
@@ -121,7 +136,26 @@ fn handle_query_alerts<S: Storage, A: Api, Q: Querier>(
         None
     };
 
-    let alerts: Vec<Alert> = read_alerts(&deps, start_after, limit, order_by)?;
+    let alerts: Vec<Alert> = read_alerts(&deps.storage, start_after, limit, order_by)?;
+
+    Ok(GetAlertsResponse { alerts })
+}
+
+fn handle_query_subscriptions_for_address<S: Storage, A: Api, Q: Querier>(
+    deps: &Extern<S, A, Q>,
+    subscriber_addr: HumanAddr,
+    start_after: Option<HumanAddr>,
+    limit: Option<u32>,
+    order_by: Option<OrderBy>,
+) -> StdResult<GetAlertsResponse> {
+    let start_after = if let Some(start_after) = start_after {
+        Some(deps.api.canonical_address(&start_after)?)
+    } else {
+        None
+    };
+    let sender_addr = deps.api.canonical_address(&subscriber_addr)?;
+    let alerts: Vec<Subscription> =
+        read_subscriptions_for_address(&deps.storage, sender_addr, start_after, limit, order_by)?;
 
     Ok(GetAlertsResponse { alerts })
 }

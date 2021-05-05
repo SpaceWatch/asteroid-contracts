@@ -2,13 +2,11 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::str;
 
-use crate::models::OrderBy;
+use crate::models::{Alert, OrderBy, Subscription};
 use cosmwasm_std::{Api, CanonicalAddr, Decimal, Extern, Querier, StdResult, Storage};
 use cosmwasm_storage::{
     singleton, singleton_read, Bucket, ReadonlyBucket, ReadonlySingleton, Singleton,
 };
-
-use crate::models::Alert;
 
 pub static PREFIX_CONFIG: &[u8] = b"config";
 
@@ -28,14 +26,15 @@ pub fn read_config<S: Storage>(storage: &S) -> StdResult<Config> {
 static PREFIX_ALERT: &[u8] = b"alert";
 
 pub fn store_alert<S: Storage>(storage: &mut S, alert: &Alert) -> StdResult<()> {
-    Bucket::new(PREFIX_ALERT, storage).save(alert.key.as_bytes(), alert)
+    let mut bucket: Bucket<S, Alert> = Bucket::new(PREFIX_ALERT, storage);
+    bucket.save(alert.alert_key.as_bytes(), alert)
 }
 
 // settings for pagination
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
-pub fn read_alerts<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
+pub fn read_alerts<S: Storage>(
+    storage: &S,
 
     start_after: Option<CanonicalAddr>, // Kinda like a cursor for pagination
     limit: Option<u32>,
@@ -47,20 +46,72 @@ pub fn read_alerts<S: Storage, A: Api, Q: Querier>(
         _ => (None, calc_range_end(start_after), OrderBy::Desc),
     };
 
-    let alerts_bucket: ReadonlyBucket<S, Alert> = ReadonlyBucket::new(PREFIX_ALERT, &deps.storage);
+    let alerts_bucket: ReadonlyBucket<S, Alert> = ReadonlyBucket::new(PREFIX_ALERT, &storage);
     alerts_bucket
         .range(start.as_deref(), end.as_deref(), order.into())
         .take(limit)
         .map(|item| {
             let (k, v) = item?;
             Ok(Alert {
-                key: String::from_utf8(k).unwrap(),
+                alert_key: String::from_utf8(k).unwrap(),
                 blockchain: v.blockchain,
                 protocol: v.protocol,
                 method: v.method,
                 name: v.name,
                 description: v.description,
                 fields: v.fields,
+            })
+        })
+        .collect()
+}
+
+static PREFIX_SUBSCRIPTION: &[u8] = b"subscription";
+pub fn store_subscription_for_address<S: Storage>(
+    storage: &mut S,
+    address: CanonicalAddr,
+    subscription: Subscription,
+) -> StdResult<()> {
+    let mut bucket: Bucket<S, Subscription> =
+        Bucket::multilevel(&[PREFIX_SUBSCRIPTION, address.as_slice()], storage);
+    bucket.save(subscription.alert_key.as_bytes(), &subscription)
+}
+
+pub fn remove_subscription_for_address<S: Storage>(
+    storage: &mut S,
+    address: CanonicalAddr,
+    alert_key: String,
+) {
+    let mut bucket: Bucket<S, Subscription> =
+        Bucket::multilevel(&[PREFIX_SUBSCRIPTION, address.as_slice()], storage);
+    bucket.remove(alert_key.as_bytes())
+}
+
+/**
+ * TODO: Multilevel bucket
+ */
+pub fn read_subscriptions_for_address<S: Storage>(
+    storage: &S,
+    address: CanonicalAddr,
+    start_after: Option<CanonicalAddr>, // Kinda like a cursor for pagination
+    limit: Option<u32>,
+    order: Option<OrderBy>,
+) -> StdResult<Vec<Subscription>> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let (start, end, order) = match order {
+        Some(OrderBy::Asc) => (calc_range_start(start_after), None, OrderBy::Asc),
+        _ => (None, calc_range_end(start_after), OrderBy::Desc),
+    };
+
+    let subscriptions_bucket: ReadonlyBucket<S, Subscription> =
+        ReadonlyBucket::multilevel(&[PREFIX_SUBSCRIPTION, address.as_slice()], &storage);
+    subscriptions_bucket
+        .range(start.as_deref(), end.as_deref(), order.into())
+        .take(limit)
+        .map(|item| {
+            let (k, v) = item?;
+            Ok(Subscription {
+                alert_key: v.alert_key,
+                field_values_by_key: v.field_values_by_key,
             })
         })
         .collect()

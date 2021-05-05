@@ -1,4 +1,4 @@
-use crate::models::{Alert, AlertField, OrderBy};
+use crate::models::{Alert, AlertField, OrderBy, Subscription};
 use cosmwasm_std::{CanonicalAddr, HumanAddr};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -33,10 +33,20 @@ pub enum QueryMsg {
         limit: Option<u32>,
         order_by: Option<OrderBy>,
     },
+    GetSubscriptions {
+        subscriber_addr: HumanAddr,
+        start_after: Option<HumanAddr>,
+        limit: Option<u32>,
+        order_by: Option<OrderBy>,
+    },
 }
 
 // We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct GetAlertsResponse {
     pub alerts: Vec<Alert>,
+}
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct GetSubscriptionsResponse {
+    pub subscriptions: Vec<Subscription>,
 }
