@@ -68,30 +68,29 @@ pub fn read_alerts<S: Storage>(
 static PREFIX_SUBSCRIPTION: &[u8] = b"subscription";
 pub fn store_subscription_for_address<S: Storage>(
     storage: &mut S,
-    address: CanonicalAddr,
+    subscriber_addr: CanonicalAddr,
     subscription: Subscription,
 ) -> StdResult<()> {
     let mut bucket: Bucket<S, Subscription> =
-        Bucket::multilevel(&[PREFIX_SUBSCRIPTION, address.as_slice()], storage);
+        Bucket::multilevel(&[PREFIX_SUBSCRIPTION, subscriber_addr.as_slice()], storage);
     bucket.save(subscription.alert_key.as_bytes(), &subscription)
 }
 
 pub fn remove_subscription_for_address<S: Storage>(
     storage: &mut S,
-    address: CanonicalAddr,
+    subscriber_address: CanonicalAddr,
     alert_key: String,
 ) {
-    let mut bucket: Bucket<S, Subscription> =
-        Bucket::multilevel(&[PREFIX_SUBSCRIPTION, address.as_slice()], storage);
+    let mut bucket: Bucket<S, Subscription> = Bucket::multilevel(
+        &[PREFIX_SUBSCRIPTION, subscriber_address.as_slice()],
+        storage,
+    );
     bucket.remove(alert_key.as_bytes())
 }
 
-/**
- * TODO: Multilevel bucket
- */
 pub fn read_subscriptions_for_address<S: Storage>(
     storage: &S,
-    address: CanonicalAddr,
+    subscriber_address: CanonicalAddr,
     start_after: Option<CanonicalAddr>, // Kinda like a cursor for pagination
     limit: Option<u32>,
     order: Option<OrderBy>,
@@ -102,8 +101,10 @@ pub fn read_subscriptions_for_address<S: Storage>(
         _ => (None, calc_range_end(start_after), OrderBy::Desc),
     };
 
-    let subscriptions_bucket: ReadonlyBucket<S, Subscription> =
-        ReadonlyBucket::multilevel(&[PREFIX_SUBSCRIPTION, address.as_slice()], &storage);
+    let subscriptions_bucket: ReadonlyBucket<S, Subscription> = ReadonlyBucket::multilevel(
+        &[PREFIX_SUBSCRIPTION, subscriber_address.as_slice()],
+        &storage,
+    );
     subscriptions_bucket
         .range(start.as_deref(), end.as_deref(), order.into())
         .take(limit)

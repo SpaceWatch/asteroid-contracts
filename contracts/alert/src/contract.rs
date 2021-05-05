@@ -1,12 +1,16 @@
 use cosmwasm_std::{
-    to_binary, Api, Binary, Env, Extern, HandleResponse, HumanAddr, InitResponse, Querier,
-    StdError, StdResult, Storage,
+    to_binary, Api, Binary, CanonicalAddr, Env, Extern, HandleResponse, HumanAddr, InitResponse,
+    Querier, StdError, StdResult, Storage,
 };
+use std::collections::HashMap;
 
-use crate::models::{Alert, AlertField, OrderBy};
-use crate::msg::{GetAlertsResponse, HandleMsg, InitMsg, QueryMsg};
+use crate::models::{Alert, AlertField, OrderBy, Subscription, SubscriptionFieldValue};
+use crate::msg::{
+    GetAlertsResponse, GetSubscriptionsForAddressResponse, HandleMsg, InitMsg, QueryMsg,
+};
 use crate::state::{
-    read_alerts, read_config, read_subscriptions_for_address, store_alert, store_config, Config,
+    read_alerts, read_config, read_subscriptions_for_address, remove_subscription_for_address,
+    store_alert, store_config, store_subscription_for_address, Config,
 };
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
@@ -46,8 +50,15 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
             description,
             fields,
         ),
-        HandleMsg::SubscribeAlert { alert_key } => Ok(HandleResponse::default()),
-        HandleMsg::UnsubscribeAlert { alert_key } => Ok(HandleResponse::default()),
+        HandleMsg::SubscribeAlertForAddress {
+            alert_key,
+            subscriber_addr,
+            field_values_by_key,
+        } => try_subscribe_alert(deps, env, subscriber_addr, alert_key, field_values_by_key),
+        HandleMsg::UnsubscribeAlertForAddress {
+            alert_key,
+            subscriber_addr,
+        } => try_unsubscribe_alert(deps, env, subscriber_addr, alert_key),
     }
 }
 
@@ -85,19 +96,37 @@ pub fn try_create_alert<S: Storage, A: Api, Q: Querier>(
     Ok(HandleResponse::default())
 }
 
-// pub fn try_reset<S: Storage, A: Api, Q: Querier>(
-//     deps: &mut Extern<S, A, Q>,
-//     env: Env,
-//     count: i32,
-// ) -> StdResult<HandleResponse> {
-//     let api = &deps.api;
+// TODO: Only allow if caller owns this subscription
+pub fn try_subscribe_alert<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    subscriber_addr: HumanAddr,
+    alert_key: String,
+    field_values_by_key: HashMap<String, SubscriptionFieldValue>,
+) -> StdResult<HandleResponse> {
+    let canonical_subscriber_addr: CanonicalAddr = deps.api.canonical_address(&subscriber_addr)?;
+    let subscription: Subscription = Subscription {
+        alert_key,
+        field_values_by_key,
+    };
+    store_subscription_for_address(&mut deps.storage, canonical_subscriber_addr, subscription)?;
 
-//     // if api.canonical_address(&env.message.sender)? != config.owner {
-//     //   store_config(&mut deps.storage)
-//     // }
+    Ok(HandleResponse::default())
+}
 
-//     Ok(HandleResponse::default())
-// }
+// TODO: Only allow if caller owns this subscription
+pub fn try_unsubscribe_alert<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    subscriber_addr: HumanAddr,
+    alert_key: String,
+) -> StdResult<HandleResponse> {
+    let canonical_subscriber_addr: CanonicalAddr = deps.api.canonical_address(&subscriber_addr)?;
+
+    remove_subscription_for_address(&mut deps.storage, canonical_subscriber_addr, alert_key);
+
+    Ok(HandleResponse::default())
+}
 
 pub fn query<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
@@ -109,7 +138,7 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
             limit,
             order_by,
         } => to_binary(&handle_query_alerts(deps, start_after, limit, order_by)),
-        QueryMsg::GetSubscriptions {
+        QueryMsg::GetSubscriptionsForAddress {
             subscriber_addr,
             start_after,
             limit,
@@ -147,17 +176,17 @@ fn handle_query_subscriptions_for_address<S: Storage, A: Api, Q: Querier>(
     start_after: Option<HumanAddr>,
     limit: Option<u32>,
     order_by: Option<OrderBy>,
-) -> StdResult<GetAlertsResponse> {
+) -> StdResult<GetSubscriptionsForAddressResponse> {
     let start_after = if let Some(start_after) = start_after {
         Some(deps.api.canonical_address(&start_after)?)
     } else {
         None
     };
     let sender_addr = deps.api.canonical_address(&subscriber_addr)?;
-    let alerts: Vec<Subscription> =
+    let subscriptions: Vec<Subscription> =
         read_subscriptions_for_address(&deps.storage, sender_addr, start_after, limit, order_by)?;
 
-    Ok(GetAlertsResponse { alerts })
+    Ok(GetSubscriptionsForAddressResponse { subscriptions })
 }
 
 #[cfg(test)]

@@ -1,7 +1,8 @@
-use crate::models::{Alert, AlertField, OrderBy, Subscription};
+use crate::models::{Alert, AlertField, OrderBy, Subscription, SubscriptionFieldValue};
 use cosmwasm_std::{CanonicalAddr, HumanAddr};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {}
@@ -17,10 +18,13 @@ pub enum HandleMsg {
         description: String,
         fields: Vec<AlertField>,
     },
-    SubscribeAlert {
+    SubscribeAlertForAddress {
         alert_key: String,
+        subscriber_addr: HumanAddr,
+        field_values_by_key: HashMap<String, SubscriptionFieldValue>,
     },
-    UnsubscribeAlert {
+    UnsubscribeAlertForAddress {
+        subscriber_addr: HumanAddr,
         alert_key: String,
     },
 }
@@ -33,7 +37,7 @@ pub enum QueryMsg {
         limit: Option<u32>,
         order_by: Option<OrderBy>,
     },
-    GetSubscriptions {
+    GetSubscriptionsForAddress {
         subscriber_addr: HumanAddr,
         start_after: Option<HumanAddr>,
         limit: Option<u32>,
@@ -47,6 +51,6 @@ pub struct GetAlertsResponse {
     pub alerts: Vec<Alert>,
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetSubscriptionsResponse {
+pub struct GetSubscriptionsForAddressResponse {
     pub subscriptions: Vec<Subscription>,
 }
