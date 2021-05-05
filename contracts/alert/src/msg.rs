@@ -18,13 +18,11 @@ pub enum HandleMsg {
         description: String,
         fields: Vec<AlertField>,
     },
-    SubscribeAlertForAddress {
+    SubscribeAlert {
         alert_key: String,
-        subscriber_addr: HumanAddr,
         field_values_by_key: HashMap<String, SubscriptionFieldValue>,
     },
-    UnsubscribeAlertForAddress {
-        subscriber_addr: HumanAddr,
+    UnsubscribeAlert {
         alert_key: String,
     },
 }
