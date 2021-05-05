@@ -54,9 +54,7 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
             alert_key,
             field_values_by_key,
         } => try_subscribe_alert(deps, env, alert_key, field_values_by_key),
-        HandleMsg::UnsubscribeAlert {
-            alert_key,
-        } => try_unsubscribe_alert(deps, env, alert_key),
+        HandleMsg::UnsubscribeAlert { alert_key } => try_unsubscribe_alert(deps, env, alert_key),
     }
 }
 
@@ -100,7 +98,8 @@ pub fn try_subscribe_alert<S: Storage, A: Api, Q: Querier>(
     alert_key: String,
     field_values_by_key: HashMap<String, SubscriptionFieldValue>,
 ) -> StdResult<HandleResponse> {
-    let canonical_subscriber_addr: CanonicalAddr =deps.api.canonical_address(&env.message.sender)?;
+    let canonical_subscriber_addr: CanonicalAddr =
+        deps.api.canonical_address(&env.message.sender)?;
     let subscription: Subscription = Subscription {
         alert_key,
         field_values_by_key,
@@ -115,7 +114,8 @@ pub fn try_unsubscribe_alert<S: Storage, A: Api, Q: Querier>(
     env: Env,
     alert_key: String,
 ) -> StdResult<HandleResponse> {
-    let canonical_subscriber_addr: CanonicalAddr = deps.api.canonical_address(&env.message.sender)?;
+    let canonical_subscriber_addr: CanonicalAddr =
+        deps.api.canonical_address(&env.message.sender)?;
 
     remove_subscription_for_address(&mut deps.storage, canonical_subscriber_addr, alert_key);
 

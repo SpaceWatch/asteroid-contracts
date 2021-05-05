@@ -51,9 +51,9 @@ pub fn read_alerts<S: Storage>(
         .range(start.as_deref(), end.as_deref(), order.into())
         .take(limit)
         .map(|item| {
-            let (k, v) = item?;
+            let (_k, v) = item?;
             Ok(Alert {
-                alert_key: String::from_utf8(k).unwrap(),
+                alert_key: v.alert_key,
                 blockchain: v.blockchain,
                 protocol: v.protocol,
                 method: v.method,
@@ -109,7 +109,7 @@ pub fn read_subscriptions_for_address<S: Storage>(
         .range(start.as_deref(), end.as_deref(), order.into())
         .take(limit)
         .map(|item| {
-            let (k, v) = item?;
+            let (_k, v) = item?;
             Ok(Subscription {
                 alert_key: v.alert_key,
                 field_values_by_key: v.field_values_by_key,
