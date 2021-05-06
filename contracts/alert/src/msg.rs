@@ -1,8 +1,7 @@
 use crate::models::{Alert, AlertField, OrderBy, Subscription, SubscriptionFieldValue};
-use cosmwasm_std::{CanonicalAddr, HumanAddr};
+use cosmwasm_std::HumanAddr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {}

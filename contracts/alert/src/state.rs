@@ -3,10 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::str;
 
 use crate::models::{Alert, OrderBy, Subscription};
-use cosmwasm_std::{Api, CanonicalAddr, Decimal, Extern, Querier, StdResult, Storage};
-use cosmwasm_storage::{
-    singleton, singleton_read, Bucket, ReadonlyBucket, ReadonlySingleton, Singleton,
-};
+use cosmwasm_std::{CanonicalAddr, StdResult, Storage};
+use cosmwasm_storage::{singleton, singleton_read, Bucket, ReadonlyBucket};
 
 pub static PREFIX_CONFIG: &[u8] = b"config";
 
@@ -30,6 +28,11 @@ pub fn store_alert<S: Storage>(storage: &mut S, alert: &Alert) -> StdResult<()> 
     bucket.save(alert.alert_key.as_bytes(), alert)
 }
 
+// Retrieve an alert by its key
+pub fn read_alert<S: Storage>(storage: &S, alert_key: &String) -> StdResult<Alert> {
+    let bucket: ReadonlyBucket<S, Alert> = ReadonlyBucket::new(PREFIX_ALERT, &storage);
+    bucket.load(alert_key.as_bytes())
+}
 // settings for pagination
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;

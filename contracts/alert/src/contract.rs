@@ -1,17 +1,17 @@
-use cosmwasm_std::{
-    to_binary, Api, Binary, CanonicalAddr, Env, Extern, HandleResponse, HumanAddr, InitResponse,
-    Querier, StdError, StdResult, Storage,
-};
-use std::collections::HashMap;
-
 use crate::models::{Alert, AlertField, OrderBy, Subscription, SubscriptionFieldValue};
 use crate::msg::{
     GetAlertsResponse, GetSubscriptionsForAddressResponse, HandleMsg, InitMsg, QueryMsg,
 };
 use crate::state::{
-    read_alerts, read_config, read_subscriptions_for_address, remove_subscription_for_address,
-    store_alert, store_config, store_subscription_for_address, Config,
+    read_alert, read_alerts, read_config, read_subscriptions_for_address,
+    remove_subscription_for_address, store_alert, store_config, store_subscription_for_address,
+    Config,
 };
+use cosmwasm_std::{
+    to_binary, Api, Binary, CanonicalAddr, Env, Extern, HandleResponse, HumanAddr, InitResponse,
+    Querier, StdError, StdResult, Storage,
+};
+use regex::Regex;
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
@@ -98,7 +98,32 @@ pub fn try_subscribe_alert<S: Storage, A: Api, Q: Querier>(
     alert_key: String,
     field_values: Vec<SubscriptionFieldValue>,
 ) -> StdResult<HandleResponse> {
-    // TODO: Ensure all required fields are populated
+    // Make sure all required fields are populated + satisfy regex
+    let alert: Alert = read_alert(&deps.storage, &alert_key)?;
+    let alert_fields: Vec<AlertField> = alert.fields;
+    for alert_field in alert_fields {
+        let valid_field_value: Option<&SubscriptionFieldValue> = field_values
+            .iter()
+            .find(|field_value| field_value.field_key == alert_field.field_key);
+        // Throw error if a required value for a field is missing
+        if !valid_field_value.is_some() {
+            return Err(StdError::generic_err(format!(
+                "Missing field {}",
+                alert_field.field_key
+            )));
+        }
+        // Throw error if a field value does not satisfy regex expression
+        if !Regex::new(&alert_field.validation_regex)
+            .unwrap()
+            .is_match(&valid_field_value.unwrap().value)
+        {
+            return Err(StdError::generic_err(format!(
+                "Invalid field {}",
+                alert_field.field_key
+            )));
+        }
+    }
+
     let canonical_subscriber_addr: CanonicalAddr =
         deps.api.canonical_address(&env.message.sender)?;
     let subscription: Subscription = Subscription {
