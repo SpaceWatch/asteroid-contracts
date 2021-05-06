@@ -112,7 +112,7 @@ pub fn read_subscriptions_for_address<S: Storage>(
             let (_k, v) = item?;
             Ok(Subscription {
                 alert_key: v.alert_key,
-                field_values_by_key: v.field_values_by_key,
+                field_values: v.field_values,
             })
         })
         .collect()

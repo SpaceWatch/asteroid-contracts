@@ -25,7 +25,7 @@ pub struct AlertField {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Subscription {
     pub alert_key: String,
-    pub field_values_by_key: HashMap<String, SubscriptionFieldValue>,
+    pub field_values: Vec<SubscriptionFieldValue>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

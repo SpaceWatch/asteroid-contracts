@@ -20,7 +20,7 @@ pub enum HandleMsg {
     },
     SubscribeAlert {
         alert_key: String,
-        field_values_by_key: HashMap<String, SubscriptionFieldValue>,
+        field_values: Vec<SubscriptionFieldValue>,
     },
     UnsubscribeAlert {
         alert_key: String,

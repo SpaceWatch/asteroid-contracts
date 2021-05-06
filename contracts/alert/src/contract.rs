@@ -52,8 +52,8 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
         ),
         HandleMsg::SubscribeAlert {
             alert_key,
-            field_values_by_key,
-        } => try_subscribe_alert(deps, env, alert_key, field_values_by_key),
+            field_values,
+        } => try_subscribe_alert(deps, env, alert_key, field_values),
         HandleMsg::UnsubscribeAlert { alert_key } => try_unsubscribe_alert(deps, env, alert_key),
     }
 }
@@ -96,13 +96,14 @@ pub fn try_subscribe_alert<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     alert_key: String,
-    field_values_by_key: HashMap<String, SubscriptionFieldValue>,
+    field_values: Vec<SubscriptionFieldValue>,
 ) -> StdResult<HandleResponse> {
+    // TODO: Ensure all required fields are populated
     let canonical_subscriber_addr: CanonicalAddr =
         deps.api.canonical_address(&env.message.sender)?;
     let subscription: Subscription = Subscription {
         alert_key,
-        field_values_by_key,
+        field_values,
     };
     store_subscription_for_address(&mut deps.storage, canonical_subscriber_addr, subscription)?;
 

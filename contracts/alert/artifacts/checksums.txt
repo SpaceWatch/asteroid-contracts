@@ -1,1 +1,1 @@
-cf984ca0faa3f32f9b6051ad4fa3906e0fe2f3589a1860e8ac8a0f4414cf8944  asteroid_alert.wasm
+5b2c59cf2670428d8ba70f1e51af169c20d5fa674f3ec5845c3e7c310956e4c9  asteroid_alert.wasm
