@@ -33,6 +33,7 @@ pub fn read_alert<S: Storage>(storage: &S, alert_key: &String) -> StdResult<Aler
     let bucket: ReadonlyBucket<S, Alert> = ReadonlyBucket::new(PREFIX_ALERT, &storage);
     bucket.load(alert_key.as_bytes())
 }
+
 // settings for pagination
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
@@ -89,6 +90,16 @@ pub fn remove_subscription_for_address<S: Storage>(
         storage,
     );
     bucket.remove(alert_key.as_bytes())
+}
+
+pub fn read_subscription_for_address<S: Storage>(
+    storage: &S,
+    subscriber_addr: &CanonicalAddr,
+    alert_key: &String,
+) -> StdResult<Subscription> {
+    let bucket: ReadonlyBucket<S, Subscription> =
+        ReadonlyBucket::multilevel(&[PREFIX_SUBSCRIPTION, subscriber_addr.as_slice()], &storage);
+    bucket.load(alert_key.as_bytes())
 }
 
 pub fn read_subscriptions_for_address<S: Storage>(

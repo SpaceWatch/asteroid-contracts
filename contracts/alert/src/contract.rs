@@ -3,15 +3,14 @@ use crate::msg::{
     GetAlertsResponse, GetSubscriptionsForAddressResponse, HandleMsg, InitMsg, QueryMsg,
 };
 use crate::state::{
-    read_alert, read_alerts, read_config, read_subscriptions_for_address,
-    remove_subscription_for_address, store_alert, store_config, store_subscription_for_address,
-    Config,
+    read_alert, read_alerts, read_config, read_subscription_for_address,
+    read_subscriptions_for_address, remove_subscription_for_address, store_alert, store_config,
+    store_subscription_for_address, Config,
 };
 use cosmwasm_std::{
     to_binary, Api, Binary, CanonicalAddr, Env, Extern, HandleResponse, HumanAddr, InitResponse,
     Querier, StdError, StdResult, Storage,
 };
-use regex::Regex;
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
@@ -98,7 +97,8 @@ pub fn try_subscribe_alert<S: Storage, A: Api, Q: Querier>(
     alert_key: String,
     field_values: Vec<SubscriptionFieldValue>,
 ) -> StdResult<HandleResponse> {
-    // Make sure all required fields are populated + satisfy regex
+    // This throws an error if the alert doesen't exist
+    // TODO: Better error message
     let alert: Alert = read_alert(&deps.storage, &alert_key)?;
     let alert_fields: Vec<AlertField> = alert.fields;
     for alert_field in alert_fields {
@@ -113,15 +113,15 @@ pub fn try_subscribe_alert<S: Storage, A: Api, Q: Querier>(
             )));
         }
         // Throw error if a field value does not satisfy regex expression
-        if !Regex::new(&alert_field.validation_regex)
-            .unwrap()
-            .is_match(&valid_field_value.unwrap().value)
-        {
-            return Err(StdError::generic_err(format!(
-                "Invalid field {}",
-                alert_field.field_key
-            )));
-        }
+        // if !Regex::new(&alert_field.validation_regex)
+        //     .unwrap()
+        //     .is_match(&valid_field_value.unwrap().value)
+        // {
+        //     return Err(StdError::generic_err(format!(
+        //         "Invalid field {}",
+        //         alert_field.field_key
+        //     )));
+        // }
     }
 
     let canonical_subscriber_addr: CanonicalAddr =
@@ -142,6 +142,13 @@ pub fn try_unsubscribe_alert<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<HandleResponse> {
     let canonical_subscriber_addr: CanonicalAddr =
         deps.api.canonical_address(&env.message.sender)?;
+
+    // This throws an alert if an alert with this key doesn't exist
+    // TODO: Better error message
+    read_alert(&deps.storage, &alert_key)?;
+    // This throws an error if user is not subscribed for this alert
+    // TODO: Better error message
+    read_subscription_for_address(&deps.storage, &canonical_subscriber_addr, &alert_key)?;
 
     remove_subscription_for_address(&mut deps.storage, canonical_subscriber_addr, alert_key);
 
